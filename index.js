@@ -59,7 +59,10 @@ async function secretPromise() {
 async function sendUserMessage(user) {
     return new Promise((resolve, reject) => {
             if (user) {
-                user.send('Hi')
+                user.send("Hello! Here is your reminder of an upcoming Clash Tournament " +
+                    "this weekend. Get out there and join your friends and sign up using either " +
+                    "!clash register (For any available team) or !clash join " +
+                    "(If you have a specific friend group you would like to join).")
                     .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'}))
                     .catch(err => reject({userId: user.id, status: 'FAILED', reason: err}));
             }
