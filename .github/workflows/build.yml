@@ -97,7 +97,7 @@ jobs:
       if: ${{ github.ref == 'refs/heads/master' }}
       uses: aws-actions/aws-cloudformation-github-deploy@v1
       with:
-        name: ClashTimeLambdaStack
+        name: ClashBotNotificationLambdaStack
         template: ClashBotLambda.template
         parameter-overrides: "Image=${{ steps.build-image.outputs.image }}"
 
