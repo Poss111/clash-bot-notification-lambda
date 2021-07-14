@@ -330,7 +330,7 @@
     }
   },
   "Resources": {
-    "ClashTimesLambda": {
+    "ClashBotNotificationLambda": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "FunctionName": "ClashBotNotificationLambda",
@@ -363,7 +363,7 @@
         }
       }
     },
-    "ClasbhBotNotificationLambdaTriggerEventRule": {
+    "ClashBotNotificationLambdaTriggerEventRule": {
       "Type": "AWS::Events::Rule",
       "Properties": {
         "Name": "ClashBotNotificationLambdaTrigger",
@@ -374,7 +374,7 @@
           {
             "Arn": {
               "Fn::GetAtt": [
-                "ClashTimesLambda",
+                "ClashBotNotificationLambda",
                 "Arn"
               ]
             },
@@ -387,13 +387,13 @@
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "FunctionName": {
-          "Ref": "ClashTimesLambda"
+          "Ref": "ClashBotNotificationLambda"
         },
         "Action": "lambda:InvokeFunction",
         "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
-            "ClasbhBotNotificationLambdaTriggerEventRule",
+            "ClashBotNotificationLambdaTriggerEventRule",
             "Arn"
           ]
         }
@@ -402,7 +402,7 @@
     "ClashBotNotificationLambdaTopic": {
       "Type": "AWS::SNS::Topic",
       "Properties": {
-        "TopicName": "ClashLambdaTopic"
+        "TopicName": "ClashBotNotificationLambdaTopic"
       }
     }
   },
@@ -417,7 +417,7 @@
     "LambdaARN": {
       "Value": {
         "Fn::GetAtt": [
-          "ClashTimesLambda",
+          "ClashBotNotificationLambda",
           "Arn"
         ]
       },
