@@ -10,7 +10,7 @@ module.exports = {
         fields: [
             {
                 name: "%TournamentName% Day %DayOne%",
-                value: "Starts @ %DayTwoStartTime%"
+                value: "Starts @ %DayOneStartTime%"
             },
             {
                 name: "%TournamentName% Day %DayTwo%",
