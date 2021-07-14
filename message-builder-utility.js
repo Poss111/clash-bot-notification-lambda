@@ -16,7 +16,7 @@ const buildEmbeddedMessage = (tournamentName, tournamentDayOne, tournamentDayTwo
     string = string.replace(/%DayOneStartTime%/g, tournamentStartTimeOne);
     string = string.replace(/%DayTwo%/g, tournamentDayTwo);
     string = string.replace(/%DayTwoStartTime%/g, tournamentStartTimeTwo);
-    return string.replace(/%FirstTeamName%/g, 'Abra');
+    return string.replace(/%FirstTeamName%/g, firstTeamName);
 }
 
 exports.buildEmbeddedMessage = buildEmbeddedMessage;
