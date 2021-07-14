@@ -1,0 +1,7 @@
+node_modules
+npm-debug.log
+*/tests*
+coverage
+README.md
+task-definition.json
+ClashBotLambda.template
