@@ -12,7 +12,7 @@ if (process.env.LOCAL) {
 const dynamo = new AWS.DynamoDB();
 
 const parseToUser = (dynamoItem) => {
-    return { id: dynamoItem.userId.S, serverName: dynamoItem.serverName.S };
+    return { id: dynamoItem.key.S, serverName: dynamoItem.serverName.S };
 }
 
 const parseToTournamentTimes = (dynamoItem) => {
