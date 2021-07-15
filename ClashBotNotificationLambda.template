@@ -348,7 +348,7 @@
             }
           }
         },
-        "Timeout": 3,
+        "Timeout": 15,
         "TracingConfig": {
           "Mode": "Active"
         },
