@@ -6,7 +6,8 @@ const buildEmbeddedMessage = (tournamentName, tournamentDayOne, tournamentDayTwo
         firstTeamName = 'Placeholders'
         teams = [{name: 'No Teams Available', value: 'Please appease the Clash Bot and start one :pleading_face:'}]
     } else {
-        firstTeamName = teams[0].name;
+        let individualNames = teams[0].name.split('\s');
+        firstTeamName = individualNames[individualNames.length - 1];
         teams.splice(0, 0, {name: "(Sample) Server Name - Team Name", value: "Team's players"});
     }
     notificationTemplate.embeds[1].fields = teams;
