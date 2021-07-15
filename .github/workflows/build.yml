@@ -98,7 +98,7 @@ jobs:
       uses: aws-actions/aws-cloudformation-github-deploy@v1
       with:
         name: ClashBotNotificationLambdaStack
-        template: ClashBotLambda.template
+        template: ClashBotNotificationLambda.template
         parameter-overrides: "Image=${{ steps.build-image.outputs.image }}"
 
     - name: Deployment Failed Discord Webhook

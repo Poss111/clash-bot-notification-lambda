@@ -202,7 +202,13 @@ exports.handler = async () => {
             throw new Error(err);
         });
     }
-    return {status: 'Done'};
+    return {
+        startTimeRestraint: currentDate,
+        endTimeRestraint: endOfTheWeekend,
+        tournaments: tournaments,
+        teams: teams,
+        status: 'Done'
+    };
 }
 
 if (process.env.LOCAL) {
