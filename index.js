@@ -30,7 +30,7 @@ const parseToTeams = (dynamoItem) => {
         players: dynamoItem.players.SS,
         tournamentName: dynamoItem.tournamentName.S,
         tournamentDay: dynamoItem.tournamentDay.S,
-        serverName: dynamoItem.tournamentDay.S,
+        serverName: dynamoItem.serverName.S,
     }
 }
 
@@ -133,7 +133,7 @@ async function sendMessages(users, tournaments, teams) {
                         console.log(`Sending message to ${user}...`);
                         promises.push(sendUserMessage(new Discord.User(bot, {id: user.id}),
                             tournaments,
-                            teams.filter(team => team.serverName === user.serverName)));
+                            teams.filter(team => team.name.startsWith(user.serverName))));
                     }
                     Promise.allSettled(promises).then(promiseResults => {
                         let successfulValues = [];
