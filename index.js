@@ -1,35 +1,76 @@
 // Load the AWS SDK for Node.js
 const Discord = require('discord.js');
 const AWS = require('aws-sdk');
-const bot = new Discord.Client();
+const messageBuilder = require('./message-builder-utility');
+let bot;
 let TOKEN = process.env.TOKEN;
 
 if (process.env.LOCAL) {
     AWS.config.loadFromPath('./credentials.json');
 }
 
-function parseToUser(dynamoItem) {
+const dynamo = new AWS.DynamoDB();
+
+const parseToUser = (dynamoItem) => {
     return dynamoItem.userId.S;
 }
 
+const parseToTournamentTimes = (dynamoItem) => {
+    return {
+        tournamentName: dynamoItem.tournamentName.S,
+        tournamentDay: dynamoItem.tournamentDay.S,
+        startTime: dynamoItem.startTime.S
+    }
+}
+
+const parseToTeams = (dynamoItem) => {
+    return {
+        key: dynamoItem.key.S,
+        teamName: dynamoItem.teamName.S,
+        players: dynamoItem.players.SS,
+        tournamentName: dynamoItem.tournamentName.S,
+        tournamentDay: dynamoItem.tournamentDay.S,
+        serverName: dynamoItem.tournamentDay.S,
+    }
+}
+
+const parser = (err, data, parser, resolve, reject) => {
+    console.debug(JSON.stringify(data));
+    if (data.Items) {
+        let parsedData = [];
+        data.Items.forEach(dynamoItem => {
+            parsedData.push(parser(dynamoItem));
+        })
+        resolve(parsedData);
+    } else {
+        reject('No data found.');
+    }
+}
+
 async function retrieveUsers() {
-    const dynamo = new AWS.DynamoDB();
     return new Promise((resolve, reject) => {
         let params = {
             TableName: 'clash-registered-users'
         }
-        dynamo.scan(params, (err, data) => {
-            console.debug(JSON.stringify(data));
-            if (data.Items) {
-                let discordUsers = [];
-                data.Items.forEach(dynamoItem => {
-                    discordUsers.push(parseToUser(dynamoItem));
-                })
-                resolve(discordUsers);
-            } else {
-                reject('No Users found.');
-            }
-        });
+        dynamo.scan(params, (err, data) => parser(err, data, parseToUser, resolve, reject));
+    });
+}
+
+async function retrieveClashTournamentsTimes() {
+    return new Promise((resolve, reject) => {
+        let params = {
+            TableName: 'clashtimes'
+        }
+        dynamo.scan(params, (err, data) => parser(err, data, parseToTournamentTimes, resolve, reject));
+    });
+}
+
+async function retrieveClashTeams() {
+    return new Promise((resolve, reject) => {
+        let params = {
+            TableName: 'clashteams'
+        }
+        dynamo.scan(params, (err, data) => parser(err, data, parseToTeams, resolve, reject));
     });
 }
 
@@ -56,21 +97,30 @@ async function secretPromise() {
     });
 }
 
-async function sendUserMessage(user) {
+async function sendUserMessage(user, tournaments, teams) {
     return new Promise((resolve, reject) => {
             if (user) {
-                user.send("Hello! Here is your reminder of an upcoming Clash Tournament " +
-                    "this weekend. Get out there and join your friends and sign up using either " +
-                    "!clash register (For any available team) or !clash join " +
-                    "(If you have a specific friend group you would like to join).")
-                    .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'}))
-                    .catch(err => reject({userId: user.id, status: 'FAILED', reason: err}));
+                let embeddedMessage = messageBuilder.buildEmbeddedMessage(tournaments[0].tournamentName,
+                    tournaments[0].tournamentDay,
+                    tournaments[1].tournamentDay,
+                    tournaments[0].startTime,
+                    tournaments[1].startTime,
+                    teams);
+                try {
+                    user.send(embeddedMessage.content)
+                        .then(user.send({embed: embeddedMessage.embeds[0]})
+                            .then(() => user.send({embed: embeddedMessage.embeds[1]})
+                                .then(() => user.send({embed: embeddedMessage.embeds[2]})
+                                    .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'})))))
+                } catch (err) {
+                    reject({userId: user.id, status: 'FAILED', reason: err})
+                }
             }
         }
     );
 }
 
-async function sendMessages(users) {
+async function sendMessages(users, tournaments, teams) {
     return new Promise((resolve, reject) => {
         console.log('Logging into bot...');
         bot.login(TOKEN).then(() => {
@@ -81,24 +131,23 @@ async function sendMessages(users) {
                 if (Array.isArray(users)) {
                     for (const user of users) {
                         console.log(`Sending message to ${user}...`);
-                        promises.push(sendUserMessage(new Discord.User(bot, {id: user})));
+                        promises.push(sendUserMessage(new Discord.User(bot, {id: user}), tournaments, teams));
                     }
                     Promise.allSettled(promises).then(promiseResults => {
-                        let rejectedValues = [];
                         let successfulValues = [];
                         for (const result of promiseResults) {
                             if (result.status === 'rejected') {
-                                rejectedValues.push(result.value.userId);
                                 console.error(`Failed to send Message : ${JSON.stringify(result.value)}`);
                             } else {
                                 successfulValues.push(result.value);
                                 console.log(`Successfully sent Message : ${JSON.stringify(result.value)}`);
                             }
                         }
-                        if (rejectedValues.length > 0) {
-                            reject(rejectedValues);
-                        }
                         resolve(successfulValues);
+                    }).finally(() => {
+                        console.log('Closing bot...');
+                        bot.destroy();
+                        console.log('Successfully closed bot.');
                     }).catch(err => reject(err));
                 }
             });
@@ -120,24 +169,43 @@ async function timeout(time) {
 
 exports.handler = async () => {
     let users = await retrieveUsers();
-    if (!process.env.LOCAL) {
-        TOKEN = await secretPromise();
+    let tournaments = await retrieveClashTournamentsTimes();
+    let teams = await retrieveClashTeams();
+    console.log(tournaments);
+    let currentDate = new Date();
+    currentDate.setDate(currentDate.getDate());
+    let endOfTheWeekend = new Date();
+    endOfTheWeekend.setDate(currentDate.getDate() + 7);
+    console.log(`Start Date : ('${currentDate})`);
+    console.log(`End Date : ('${endOfTheWeekend})`);
+    tournaments = tournaments.filter(tournament => new Date(tournament.startTime) > currentDate && new Date(tournament.startTime) < endOfTheWeekend);
+    console.log(`Upcoming Tournaments => JSON.stringify(tournaments)`);
+    if (tournaments.length === 0) {
+        console.log("No upcoming tournaments this weekend. Terminating job gracefully.");
+    } else {
+        let tournamentNames = tournaments.map(record => record.tournamentName);
+        let tournamentDays = tournaments.map(record => record.tournamentDay);
+        teams = teams.filter(team => tournamentNames.includes(team.tournamentName) && tournamentDays.includes(team.tournamentDay));
+        teams = teams.map(team => {
+            return { name: team.teamName, value: team.players}
+        });
+        bot = new Discord.Client();
+        if (!process.env.LOCAL) {
+            TOKEN = await secretPromise();
+        }
+        await Promise.race(
+            [
+                sendMessages(users, tournaments, teams),
+                timeout(20000)
+            ]).catch(err => {
+            console.error(err);
+            throw new Error(err);
+        });
     }
-    await Promise.race(
-        [
-            sendMessages(users),
-            timeout(20000)
-        ]).catch(err => {
-        console.error(err);
-        throw new Error(err);
-    }).finally(() => {
-        console.log('Closing bot...');
-        bot.destroy();
-        console.log('Successfully closed bot.');
-    });
     return {status: 'Done'};
 }
 
 if (process.env.LOCAL) {
-    console.log(this.handler());
+    this.handler().then(results => console.log(results));
+    process.exit(0);
 }
