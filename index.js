@@ -207,6 +207,7 @@ exports.handler = async () => {
         startTimeRestraint: currentDate,
         endTimeRestraint: endOfTheWeekend,
         tournaments: tournaments,
+        subscribedUsers: users,
         teams: teams,
         status: 'Done'
     };
