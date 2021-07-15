@@ -12,7 +12,7 @@ if (process.env.LOCAL) {
 const dynamo = new AWS.DynamoDB();
 
 const parseToUser = (dynamoItem) => {
-    return dynamoItem.userId.S;
+    return { id: dynamoItem.userId.S, serverName: dynamoItem.serverName.S };
 }
 
 const parseToTournamentTimes = (dynamoItem) => {
@@ -131,7 +131,9 @@ async function sendMessages(users, tournaments, teams) {
                 if (Array.isArray(users)) {
                     for (const user of users) {
                         console.log(`Sending message to ${user}...`);
-                        promises.push(sendUserMessage(new Discord.User(bot, {id: user}), tournaments, teams));
+                        promises.push(sendUserMessage(new Discord.User(bot, {id: user.id}),
+                            tournaments,
+                            teams.filter(team => team.serverName === user.serverName)));
                     }
                     Promise.allSettled(promises).then(promiseResults => {
                         let successfulValues = [];
@@ -187,7 +189,7 @@ exports.handler = async () => {
         let tournamentDays = tournaments.map(record => record.tournamentDay);
         teams = teams.filter(team => tournamentNames.includes(team.tournamentName) && tournamentDays.includes(team.tournamentDay));
         teams = teams.map(team => {
-            return { name: team.teamName, value: team.players}
+            return { name: `${team.serverName} - ${team.teamName}`, value: team.players}
         });
         bot = new Discord.Client();
         if (!process.env.LOCAL) {
