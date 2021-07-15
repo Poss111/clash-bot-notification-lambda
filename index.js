@@ -175,7 +175,6 @@ exports.handler = async () => {
     let teams = await retrieveClashTeams();
     console.log(tournaments);
     let currentDate = new Date();
-    currentDate.setDate(currentDate.getDate() + 7);
     let endOfTheWeekend = new Date();
     endOfTheWeekend.setDate(currentDate.getDate() + 7);
     console.log(`Start Date : ('${currentDate})`);
