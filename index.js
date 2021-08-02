@@ -27,7 +27,7 @@ const parseToTeams = (dynamoItem) => {
     return {
         key: dynamoItem.key.S,
         teamName: dynamoItem.teamName.S,
-        players: dynamoItem.players.SS,
+        players: Array.isArray(dynamoItem.players.SS) ? dynamoItem.players.SS : [],
         tournamentName: dynamoItem.tournamentName.S,
         tournamentDay: dynamoItem.tournamentDay.S,
         serverName: dynamoItem.serverName.S,
@@ -186,7 +186,7 @@ exports.handler = async () => {
     } else {
         let tournamentNames = tournaments.map(record => record.tournamentName);
         let tournamentDays = tournaments.map(record => record.tournamentDay);
-        teams = teams.filter(team => tournamentNames.includes(team.tournamentName) && tournamentDays.includes(team.tournamentDay));
+        teams = teams.filter(team => tournamentNames.includes(team.tournamentName) && tournamentDays.includes(team.tournamentDay) && Array.isArray(team.players));
         teams = teams.map(team => {
             return { name: `${team.serverName} - ${team.teamName}`, value: team.players}
         });
