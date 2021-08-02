@@ -27,7 +27,7 @@ const parseToTeams = (dynamoItem) => {
     return {
         key: dynamoItem.key.S,
         teamName: dynamoItem.teamName.S,
-        players: Array.isArray(dynamoItem.players.SS) ? dynamoItem.players.SS : [],
+        players: dynamoItem.players ? dynamoItem.players.SS : dynamoItem.players,
         tournamentName: dynamoItem.tournamentName.S,
         tournamentDay: dynamoItem.tournamentDay.S,
         serverName: dynamoItem.serverName.S,
