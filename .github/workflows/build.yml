@@ -21,7 +21,7 @@ jobs:
       uses: Poss111/discord-hook-action@v1.6.8
       with:
         discord-hook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        title: 'Clash Bot Notification Lambda Deployment Notification'
+        title: 'Clash Bot Notification Lambda Build Notification'
         message: 'Starting Github build...'
         message-color: '15258703'
 
@@ -53,7 +53,7 @@ jobs:
       if: ${{ failure() }}
       with:
         discord-hook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        title: 'Clash Bot Notification Lambda Deployment Notification'
+        title: 'Clash Bot Notification Lambda Build Notification'
         message: 'Github build failed!'
         message-color: '16711680'
 
@@ -62,6 +62,6 @@ jobs:
       if: ${{ success() && github.ref != 'refs/heads/master'}}
       with:
         discord-hook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        title: 'Clash Bot Notification Lambda Deployment Notification'
+        title: 'Clash Bot Notification Lambda Build Notification'
         message: 'Github build succeeded!'
         message-color: '65345'
