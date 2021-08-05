@@ -52,8 +52,11 @@ async function retrieveUsers() {
         let params = {
             TableName: 'clash-registered-users',
             IndexName: 'subscribed-users-index'
-        }
-        dynamo.scan(params, (err, data) => parser(err, data, parseToUser, resolve, reject));
+        };
+        dynamo.scan(params, (err, data) => {
+            if (err) reject(err);
+            parser(err, data, parseToUser, resolve, reject)
+        });
     });
 }
 
@@ -107,14 +110,19 @@ async function sendUserMessage(user, tournaments, teams) {
                     tournaments[0].startTime,
                     tournaments[1].startTime,
                     teams);
-                try {
-                    user.send(embeddedMessage.content)
-                        .then(user.send({embed: embeddedMessage.embeds[0]})
-                            .then(() => user.send({embed: embeddedMessage.embeds[1]})
-                                .then(() => user.send({embed: embeddedMessage.embeds[2]})
-                                    .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'})))))
-                } catch (err) {
-                    reject({userId: user.id, status: 'FAILED', reason: err})
+                if (!process.env.LOCAL) {
+                    try {
+                        user.send(embeddedMessage.content)
+                            .then(user.send({embed: embeddedMessage.embeds[0]})
+                                .then(() => user.send({embed: embeddedMessage.embeds[1]})
+                                    .then(() => user.send({embed: embeddedMessage.embeds[2]})
+                                        .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'})))))
+                    } catch (err) {
+                        reject({userId: user.id, status: 'FAILED', reason: err})
+                    }
+                } else {
+                    console.log(`Sending embedded message to ('${user}')...`);
+                    console.log(`Message => ${JSON.stringify(embeddedMessage)}`);
                 }
             }
         }
@@ -215,6 +223,6 @@ exports.handler = async () => {
 }
 
 if (process.env.LOCAL) {
-    this.handler().then(results => console.log(results));
-    process.exit(0);
+    console.log(`Local configuration on.`);
+    this.handler().then(results => console.log(results)).catch(err => console.error(err));
 }
