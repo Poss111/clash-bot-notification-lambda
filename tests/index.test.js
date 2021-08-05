@@ -117,6 +117,10 @@ function setupMockDiscordUser(mockSendMethod, expectedMockUserId) {
     });
 }
 
+beforeEach(() => {
+    jest.resetAllMocks();
+})
+
 describe('Clash Bot Notification Lambda', () => {
 
     describe('Handler', () => {
@@ -190,7 +194,6 @@ describe('Clash Bot Notification Lambda', () => {
     })
 
     describe('Handler Error', () => {
-
         test('If there are no users found.', async () => {
             setupAWSMocks({});
             try {
@@ -199,15 +202,6 @@ describe('Clash Bot Notification Lambda', () => {
             } catch (error) {
                 expect(error).toBeTruthy();
             }
-
-        })
-
-        test('If there are no tournaments found.', () => {
-
-        })
-
-        test('If there are no Teams found.', () => {
-
         })
     })
 })

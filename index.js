@@ -66,7 +66,7 @@ async function retrieveClashTournamentsTimes() {
         let params = {
             TableName: 'clashtimes'
         }
-        dynamo.scan(params, (err, data) => parser(err, data, parseToTournamentTimes, resolve, reject));
+        dynamo.scan(params, (err, data) => parser(err, data, parseToTournamentTimes, params, resolve, reject));
     });
 }
 
@@ -75,7 +75,7 @@ async function retrieveClashTeams() {
         let params = {
             TableName: 'clashteams'
         }
-        dynamo.scan(params, (err, data) => parser(err, data, parseToTeams, resolve, reject));
+        dynamo.scan(params, (err, data) => parser(err, data, parseToTeams, params, resolve, reject));
     });
 }
 
