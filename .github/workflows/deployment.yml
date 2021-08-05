@@ -15,60 +15,10 @@ jobs:
     steps:
       - uses: FranzDiebold/github-env-vars-action@v2.1.0
 
-      - name: Build Start Discord Webhook
-        uses: Poss111/discord-hook-action@v1.6.8
-        with:
-          discord-hook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          title: 'Clash Bot Notification Lambda Deployment Notification'
-          message: 'Starting Github build...'
-          message-color: '15258703'
-
       - name: Check
         run : echo build $GITHUB_RUN_NUMBER
 
       - uses: actions/checkout@v2
-
-      - name: Cache node modules
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install Dependencies
-        run: npm i
-
-      - name: Build Failed Discord Webhook
-        uses: Poss111/discord-hook-action@v1.6.8
-        if: ${{ failure() }}
-        with:
-          discord-hook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          title: 'Clash Bot Notification Lambda Deployment Notification'
-          message: 'Github build failed!'
-          message-color: '16711680'
-
-      - name: Build Succeded Discord Webhook
-        uses: Poss111/discord-hook-action@v1.6.8
-        if: ${{ success() }}
-        with:
-          discord-hook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          title: 'Clash Bot Notification Lambda Deployment Notification'
-          message: 'Github build succeeded!'
-          message-color: '65345'
-
-      - name: Deployment In Progress Discord Webhook
-        uses: Poss111/discord-hook-action@v1.6.8
-        if: ${{ success()}}
-        with:
-          discord-hook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          title: 'Clash Bot Notification Lambda Deployment Notification'
-          message: 'Deployment in progress...'
-          message-color: '16750902'
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -81,6 +31,14 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
+      - name: Build Docker Image Start Discord Webhook
+        uses: Poss111/discord-hook-action@v1.6.8
+        with:
+          discord-hook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: 'Clash Bot Notification Lambda Deployment Notification'
+          message: 'Starting Docker Image build...'
+          message-color: '15258703'
+
       - name: Build, tag, and push Clash-Bot image to Amazon ECR
         id: build-image
         env:
@@ -91,6 +49,15 @@ jobs:
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: Deployment In Progress Discord Webhook
+        uses: Poss111/discord-hook-action@v1.6.8
+        if: ${{ success()}}
+        with:
+          discord-hook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: 'Clash Bot Notification Lambda Deployment Notification'
+          message: 'Deployment in progress...'
+          message-color: '16750902'
 
       - name: Deploy to AWS CloudFormation
         uses: aws-actions/aws-cloudformation-github-deploy@v1
