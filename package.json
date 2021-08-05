@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --silent"
   },
   "keywords": [],
   "author": "",
@@ -12,5 +12,9 @@
   "dependencies": {
     "aws-sdk": "^2.898.0",
     "discord.js": "^12.2.0"
+  },
+  "devDependencies": {
+    "jest": "^27.0.6",
+    "moment-timezone": "^0.5.33"
   }
 }

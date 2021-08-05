@@ -3,16 +3,15 @@ const Discord = require('discord.js');
 const AWS = require('aws-sdk');
 const messageBuilder = require('./message-builder-utility');
 let bot;
+let dynamo;
 let TOKEN = process.env.TOKEN;
 
 if (process.env.LOCAL) {
     AWS.config.loadFromPath('./credentials.json');
 }
 
-const dynamo = new AWS.DynamoDB();
-
 const parseToUser = (dynamoItem) => {
-    return { id: dynamoItem.key.S, serverName: dynamoItem.serverName.S };
+    return {id: dynamoItem.key.S, serverName: dynamoItem.serverName.S};
 }
 
 const parseToTournamentTimes = (dynamoItem) => {
@@ -34,7 +33,7 @@ const parseToTeams = (dynamoItem) => {
     }
 }
 
-const parser = (err, data, parser, resolve, reject) => {
+const parser = (err, data, parser, params, resolve, reject) => {
     console.debug(JSON.stringify(data));
     if (data.Items) {
         let parsedData = [];
@@ -43,16 +42,22 @@ const parser = (err, data, parser, resolve, reject) => {
         })
         resolve(parsedData);
     } else {
-        reject('No data found.');
+        let errorString = `Failed to find Items to pull Table ('${params.TableName}') data ('${JSON.stringify(data)}')`;
+        console.error(errorString)
+        reject(errorString);
     }
 }
 
 async function retrieveUsers() {
     return new Promise((resolve, reject) => {
         let params = {
-            TableName: 'clash-registered-users'
-        }
-        dynamo.scan(params, (err, data) => parser(err, data, parseToUser, resolve, reject));
+            TableName: 'clash-registered-users',
+            IndexName: 'subscribed-users-index'
+        };
+        dynamo.scan(params, (err, data) => {
+            if (err) reject(err);
+            parser(err, data, parseToUser, params, resolve, reject)
+        });
     });
 }
 
@@ -61,7 +66,7 @@ async function retrieveClashTournamentsTimes() {
         let params = {
             TableName: 'clashtimes'
         }
-        dynamo.scan(params, (err, data) => parser(err, data, parseToTournamentTimes, resolve, reject));
+        dynamo.scan(params, (err, data) => parser(err, data, parseToTournamentTimes, params, resolve, reject));
     });
 }
 
@@ -70,7 +75,7 @@ async function retrieveClashTeams() {
         let params = {
             TableName: 'clashteams'
         }
-        dynamo.scan(params, (err, data) => parser(err, data, parseToTeams, resolve, reject));
+        dynamo.scan(params, (err, data) => parser(err, data, parseToTeams, params, resolve, reject));
     });
 }
 
@@ -106,14 +111,19 @@ async function sendUserMessage(user, tournaments, teams) {
                     tournaments[0].startTime,
                     tournaments[1].startTime,
                     teams);
-                try {
-                    user.send(embeddedMessage.content)
-                        .then(user.send({embed: embeddedMessage.embeds[0]})
-                            .then(() => user.send({embed: embeddedMessage.embeds[1]})
-                                .then(() => user.send({embed: embeddedMessage.embeds[2]})
-                                    .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'})))))
-                } catch (err) {
-                    reject({userId: user.id, status: 'FAILED', reason: err})
+                if (!process.env.LOCAL) {
+                    try {
+                        user.send(embeddedMessage.content)
+                            .then(user.send({embed: embeddedMessage.embeds[0]})
+                                .then(() => user.send({embed: embeddedMessage.embeds[1]})
+                                    .then(() => user.send({embed: embeddedMessage.embeds[2]})
+                                        .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'})))))
+                    } catch (err) {
+                        reject({userId: user.id, status: 'FAILED', reason: err})
+                    }
+                } else {
+                    console.log(`Sending embedded message to ('${user.id}')...`);
+                    console.log(`Message => ${JSON.stringify(embeddedMessage)}`);
                 }
             }
         }
@@ -125,34 +135,10 @@ async function sendMessages(users, tournaments, teams) {
         console.log('Logging into bot...');
         bot.login(TOKEN).then(() => {
 
-            bot.on('ready', () => {
-                console.info(`Logged in as ${bot.user.tag}!`);
-                let promises = [];
-                if (Array.isArray(users)) {
-                    for (const user of users) {
-                        console.log(`Sending message to ${user}...`);
-                        promises.push(sendUserMessage(new Discord.User(bot, {id: user.id}),
-                            tournaments,
-                            teams.filter(team => team.name.startsWith(user.serverName))));
-                    }
-                    Promise.allSettled(promises).then(promiseResults => {
-                        let successfulValues = [];
-                        for (const result of promiseResults) {
-                            if (result.status === 'rejected') {
-                                console.error(`Failed to send Message : ${JSON.stringify(result.value)}`);
-                            } else {
-                                successfulValues.push(result.value);
-                                console.log(`Successfully sent Message : ${JSON.stringify(result.value)}`);
-                            }
-                        }
-                        resolve(successfulValues);
-                    }).finally(() => {
-                        console.log('Closing bot...');
-                        bot.destroy();
-                        console.log('Successfully closed bot.');
-                    }).catch(err => reject(err));
-                }
-            });
+            bot.on('ready', () => onBotReady(users, tournaments, teams, (err, data) => {
+                if (err) reject(err);
+                else resolve(data);
+            }));
         }).catch(err => {
             console.error(`Failed to send to Users because of => ${err}`);
             reject(err);
@@ -160,27 +146,54 @@ async function sendMessages(users, tournaments, teams) {
     });
 }
 
-async function timeout(time) {
-    return new Promise((resolve, reject) => {
-        let id = setTimeout(() => {
-            clearTimeout(id);
-            reject(`Failed to execute promise after ('${time} ms')`)
-        }, time);
-    });
+async function onBotReady(users, tournaments, teams, callback) {
+    console.info(`Logged in as ${bot.user.tag}!`);
+    let promises = [];
+    if (Array.isArray(users)) {
+        for (const user of users) {
+            console.log(`Sending message to ${user.id}...`);
+            promises.push(sendUserMessage(new Discord.User(bot, {id: user.id}),
+                tournaments,
+                teams.filter(team => team.name.startsWith(user.serverName))));
+        }
+        let successfulValues = [];
+        let failedValues = [];
+        Promise.allSettled(promises).then(promiseResults => {
+            for (const result of promiseResults) {
+                if (result.status === 'rejected') {
+                    console.error(`Failed to send Message : ${JSON.stringify(result.reason)}`);
+                    failedValues.push(result.reason);
+                } else {
+                    successfulValues.push(result.value);
+                    console.log(`Successfully sent Message : ${JSON.stringify(result.value)}`);
+                }
+            }
+        }).finally(() => {
+            console.log('Closing bot...');
+            bot.destroy();
+            console.log('Successfully closed bot.');
+            if (failedValues.length > 0) {
+                callback(failedValues);
+            } else {
+                callback(undefined, successfulValues);
+            }
+        }).catch(err => callback(err));
+    }
 }
 
 exports.handler = async () => {
+    dynamo = new AWS.DynamoDB();
     let users = await retrieveUsers();
     let tournaments = await retrieveClashTournamentsTimes();
     let teams = await retrieveClashTeams();
-    console.log(tournaments);
     let currentDate = new Date();
     let endOfTheWeekend = new Date();
     endOfTheWeekend.setDate(currentDate.getDate() + 7);
     console.log(`Start Date : ('${currentDate})`);
     console.log(`End Date : ('${endOfTheWeekend})`);
     tournaments = tournaments.filter(tournament => new Date(tournament.startTime) > currentDate && new Date(tournament.startTime) < endOfTheWeekend);
-    console.log(`Upcoming Tournaments => JSON.stringify(tournaments)`);
+    console.log(`Upcoming Tournaments => ${JSON.stringify(tournaments)}`);
+    let messages = [];
     if (tournaments.length === 0) {
         console.log("No upcoming tournaments this weekend. Terminating job gracefully.");
     } else {
@@ -188,32 +201,32 @@ exports.handler = async () => {
         let tournamentDays = tournaments.map(record => record.tournamentDay);
         teams = teams.filter(team => tournamentNames.includes(team.tournamentName) && tournamentDays.includes(team.tournamentDay) && Array.isArray(team.players));
         teams = teams.map(team => {
-            return { name: `${team.serverName} - ${team.teamName}`, value: team.players}
+            return {name: `${team.serverName} - ${team.teamName}`, value: team.players}
         });
         bot = new Discord.Client();
         if (!process.env.LOCAL) {
             TOKEN = await secretPromise();
         }
-        await Promise.race(
-            [
-                sendMessages(users, tournaments, teams),
-                timeout(20000)
-            ]).catch(err => {
-            console.error(err);
-            throw new Error(err);
-        });
+        messages = await sendMessages(users, tournaments, teams)
+            .catch(err => {
+                console.error(err);
+                throw new Error(err);
+            });
     }
     return {
         startTimeRestraint: currentDate,
         endTimeRestraint: endOfTheWeekend,
         tournaments: tournaments,
         subscribedUsers: users,
+        sentMessages: messages,
         teams: teams,
         status: 'Done'
     };
 }
 
 if (process.env.LOCAL) {
-    this.handler().then(results => console.log(results));
-    process.exit(0);
+    console.log(`Local configuration on.`);
+    this.handler().then(results => console.log(results)).catch(err => console.error(err));
 }
+
+module.exports.handler = this.handler;
