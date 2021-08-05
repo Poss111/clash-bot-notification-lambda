@@ -50,7 +50,8 @@ const parser = (err, data, parser, resolve, reject) => {
 async function retrieveUsers() {
     return new Promise((resolve, reject) => {
         let params = {
-            TableName: 'clash-registered-users'
+            TableName: 'clash-registered-users',
+            IndexName: 'subscribed-users-index'
         }
         dynamo.scan(params, (err, data) => parser(err, data, parseToUser, resolve, reject));
     });
