@@ -7,7 +7,16 @@ let dynamo;
 let TOKEN = process.env.TOKEN;
 
 if (process.env.LOCAL) {
-    AWS.config.loadFromPath('./credentials.json');
+    AWS.config.update({
+        region: `us-east-1`,
+        endpoint: `http://localhost:8000`,
+        accessKeyId: 'Dummy',
+        secretAccessKey: 'Dummy',
+        httpOptions: {
+            connectTimeout: 2000,
+            timeout: 2000
+        }
+    });
 }
 
 const parseToUser = (dynamoItem) => {
