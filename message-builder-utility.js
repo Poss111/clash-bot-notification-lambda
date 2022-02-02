@@ -1,6 +1,7 @@
 const notificationTemplate = require('./templates/notification-template');
 
-const buildEmbeddedMessage = (tournamentName, tournamentDayOne, tournamentDayTwo, tournamentStartTimeOne, tournamentStartTimeTwo, teams) => {
+const buildEmbeddedMessage = (tournamentName, tournamentDayOne, tournamentDayTwo,
+                              tournamentStartTimeOne, tournamentStartTimeTwo, teams) => {
     let firstTeamName;
     if (!Array.isArray(teams) || teams.length === 0) {
         firstTeamName = 'Placeholders'

@@ -176,7 +176,7 @@ describe('Clash Bot Notification Lambda', () => {
             const results = await index.handler();
             expect(mockDiscordOn).toBeCalledTimes(1);
             expect(actualEvents.size).toEqual(1);
-            expect(mockSendMethod.send).toBeCalledTimes(4);
+            expect(mockSendMethod.send).toBeCalledTimes(1);
             expect(results.sentMessages).toHaveLength(1);
             expect(results.sentMessages[0].userId).toEqual(expectedMockUserId);
             expect(results.sentMessages[0].status).toEqual('SUCCESSFUL');
@@ -197,8 +197,16 @@ describe('Clash Bot Notification Lambda', () => {
             const expectedMockUserId = '12345678910';
             const mockSubscribedUsers = createMockSubscribedUsers(expectedMockUserId, expectedServerName);
             const mockTournaments = createMockTournaments();
+            const mockRetrievedUserDetails = {
+                Responses: {
+                    "clash-registered-users": [
+                        createMockSubscribedUserObj('1', expectedServerName),
+                        createMockSubscribedUserObj('2', expectedServerName)
+                    ]
+                }
+            };
             const mockClashTeams = createMockClashTeams(expectedServerName, expectedTeamName, tournamentName, tournamentDayOne);
-            setupAWSMocks(mockSubscribedUsers, mockTournaments, mockClashTeams);
+            setupAWSMocks(mockSubscribedUsers, mockTournaments, mockClashTeams, mockRetrievedUserDetails);
             let actualEvents = new Map();
             const mockDiscordOn = jest.fn().mockImplementation((state, callback) => {
                 actualEvents.set(state, callback);

@@ -99,7 +99,7 @@ async function secretPromise() {
     });
 }
 
-async function sendUserMessage(user, tournaments, teams, idToUserDetails) {
+async function sendUserMessage(user, tournaments, teams) {
     return new Promise((resolve, reject) => {
             if (user) {
                 let embeddedMessage = messageBuilder.buildEmbeddedMessage(tournaments[0].tournamentName,
@@ -110,10 +110,12 @@ async function sendUserMessage(user, tournaments, teams, idToUserDetails) {
                     teams);
                 if (!process.env.LOCAL) {
                     try {
-                        user.createDM().then((channel) => {
-                            channel.send(embeddedMessage)
-                                .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'}));
-                        });
+                        user.createDM()
+                            .then((channel) => {
+                                channel.send(embeddedMessage)
+                                .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'}))
+                                    .catch((err) => reject({userId: user.key, status: 'FAILED', reason: err}))
+                        }).catch((err) => reject({userId: user.key, status: 'FAILED', reason: err}));
                     } catch (err) {
                         reject({userId: user.key, status: 'FAILED', reason: err})
                     }
@@ -133,9 +135,9 @@ async function sendMessages(users, tournaments, teams) {
             if (err) reject(err);
             else resolve(data);
         }));
-        bot.login(TOKEN).then(() => {
-
-        }).catch(err => {
+        bot.login(TOKEN)
+            .then(() => console.log('Successfully logged into bot.'))
+            .catch(err => {
             console.error(`Failed to send to Users because of => ${err}`);
             reject(err);
         });
