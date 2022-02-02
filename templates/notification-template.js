@@ -6,6 +6,7 @@ module.exports = {
     embeds: [
     {
         title: ":trophy: Upcoming Tournaments",
+        description: "Here are the upcoming Tournaments.",
         color: 1880,
         fields: [
             {

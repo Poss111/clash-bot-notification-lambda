@@ -6,21 +6,8 @@ let bot;
 let dynamo;
 let TOKEN = process.env.TOKEN;
 
-if (process.env.LOCAL) {
-    AWS.config.update({
-        region: `us-east-1`,
-        endpoint: `http://localhost:8000`,
-        accessKeyId: 'Dummy',
-        secretAccessKey: 'Dummy',
-        httpOptions: {
-            connectTimeout: 2000,
-            timeout: 2000
-        }
-    });
-}
-
 const parseToUser = (dynamoItem) => {
-    return {id: dynamoItem.key.S, serverName: dynamoItem.serverName.S};
+    return {key: dynamoItem.key.S, playerName: dynamoItem.playerName.S, serverName: dynamoItem.serverName.S};
 }
 
 const parseToTournamentTimes = (dynamoItem) => {
@@ -36,6 +23,7 @@ const parseToTeams = (dynamoItem) => {
         key: dynamoItem.key.S,
         teamName: dynamoItem.teamName.S,
         players: dynamoItem.players ? dynamoItem.players.SS : dynamoItem.players,
+        playersWRoles: dynamoItem.playersWRoles ? dynamoItem.playersWRoles.M : dynamoItem.playersWRoles,
         tournamentName: dynamoItem.tournamentName.S,
         tournamentDay: dynamoItem.tournamentDay.S,
         serverName: dynamoItem.serverName.S,
@@ -111,7 +99,7 @@ async function secretPromise() {
     });
 }
 
-async function sendUserMessage(user, tournaments, teams) {
+async function sendUserMessage(user, tournaments, teams, idToUserDetails) {
     return new Promise((resolve, reject) => {
             if (user) {
                 let embeddedMessage = messageBuilder.buildEmbeddedMessage(tournaments[0].tournamentName,
@@ -122,16 +110,15 @@ async function sendUserMessage(user, tournaments, teams) {
                     teams);
                 if (!process.env.LOCAL) {
                     try {
-                        user.send(embeddedMessage.content)
-                            .then(user.send({embed: embeddedMessage.embeds[0]})
-                                .then(() => user.send({embed: embeddedMessage.embeds[1]})
-                                    .then(() => user.send({embed: embeddedMessage.embeds[2]})
-                                        .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'})))))
+                        user.createDM().then((channel) => {
+                            channel.send(embeddedMessage)
+                                .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'}));
+                        });
                     } catch (err) {
-                        reject({userId: user.id, status: 'FAILED', reason: err})
+                        reject({userId: user.key, status: 'FAILED', reason: err})
                     }
                 } else {
-                    console.log(`Sending embedded message to ('${user.id}')...`);
+                    console.log(`Sending embedded message to ('${user.key}')...`);
                     console.log(`Message => ${JSON.stringify(embeddedMessage)}`);
                 }
             }
@@ -142,12 +129,12 @@ async function sendUserMessage(user, tournaments, teams) {
 async function sendMessages(users, tournaments, teams) {
     return new Promise((resolve, reject) => {
         console.log('Logging into bot...');
+        bot.on('ready', () => onBotReady(users, tournaments, teams, (err, data) => {
+            if (err) reject(err);
+            else resolve(data);
+        }));
         bot.login(TOKEN).then(() => {
 
-            bot.on('ready', () => onBotReady(users, tournaments, teams, (err, data) => {
-                if (err) reject(err);
-                else resolve(data);
-            }));
         }).catch(err => {
             console.error(`Failed to send to Users because of => ${err}`);
             reject(err);
@@ -160,8 +147,8 @@ async function onBotReady(users, tournaments, teams, callback) {
     let promises = [];
     if (Array.isArray(users)) {
         for (const user of users) {
-            console.log(`Sending message to ${user.id}...`);
-            promises.push(sendUserMessage(new Discord.User(bot, {id: user.id}),
+            console.log(`Sending message to ${user.key}...`);
+            promises.push(sendUserMessage(new Discord.User(bot, {id: user.key}),
                 tournaments,
                 teams.filter(team => team.name.startsWith(user.serverName))));
         }
@@ -190,8 +177,56 @@ async function onBotReady(users, tournaments, teams, callback) {
     }
 }
 
+function retrieveAllUniquePlayerIdsOnTeams(teams) {
+    return Array.from(new Set([...teams.map(team => team.players).flat()]));
+}
+
+const retrieveAllUserInformation = (playerIds, dynamodb) => {
+    return new Promise((resolve, reject) => {
+        if (!Array.isArray(playerIds) || playerIds.length <= 0) {
+            resolve({});
+        } else {
+            const params = {
+                RequestItems: {
+                    "clash-registered-users": {
+                        Keys: playerIds.map(playerId => {
+                            return {
+                                key: {
+                                    S: playerId
+                                }
+                            }
+                        })
+                    }
+                }
+            };
+            dynamodb.batchGetItem(params, (err, data) => {
+                if (err) reject(err);
+                else {
+                    let object = {};
+                    data.Responses['clash-registered-users'].forEach(item => object[item.key.S] = parseToUser(item));
+                    resolve(object);
+                }
+            });
+        }
+    });
+}
+
 exports.handler = async () => {
-    dynamo = new AWS.DynamoDB();
+    if (process.env.LOCAL) {
+        dynamo = new AWS.DynamoDB({
+            region: `us-east-1`,
+            endpoint: `http://localhost:8000`,
+            accessKeyId: 'Dummy',
+            secretAccessKey: 'Dummy',
+            httpOptions: {
+                connectTimeout: 2000,
+                timeout: 2000
+            }
+        });
+    } else {
+
+        dynamo = new AWS.DynamoDB();
+    }
     let users = await retrieveUsers();
     let tournaments = await retrieveClashTournamentsTimes();
     let teams = await retrieveClashTeams();
@@ -209,10 +244,14 @@ exports.handler = async () => {
         let tournamentNames = tournaments.map(record => record.tournamentName);
         let tournamentDays = tournaments.map(record => record.tournamentDay);
         teams = teams.filter(team => tournamentNames.includes(team.tournamentName) && tournamentDays.includes(team.tournamentDay) && Array.isArray(team.players));
+        const playerIds = retrieveAllUniquePlayerIdsOnTeams(teams);
+        const playerIdMap = await retrieveAllUserInformation(playerIds, dynamo);
         teams = teams.map(team => {
-            return {name: `${team.serverName} - ${team.teamName}`, value: team.players}
+            let playerList = Object.keys(team.playersWRoles)
+                .map(key => `${key} - ${playerIdMap[team.playersWRoles[key].S].playerName}`).join("\n");
+            return {name: `${team.serverName} - ${team.teamName}`, value: playerList}
         });
-        bot = new Discord.Client();
+        bot = new Discord.Client({intents: [Discord.Intents.FLAGS.GUILDS]});
         if (!process.env.LOCAL) {
             TOKEN = await secretPromise();
         }
@@ -239,3 +278,4 @@ if (process.env.LOCAL) {
 }
 
 module.exports.handler = this.handler;
+module.exports.retrieveAllUserInformation = retrieveAllUserInformation;
