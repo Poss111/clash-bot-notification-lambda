@@ -11,10 +11,10 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.898.0",
-    "discord.js": "^12.2.0"
+    "discord.js": "^13.6.0"
   },
   "devDependencies": {
-    "jest": "^27.0.6",
+    "jest": "^27.4.7",
     "moment-timezone": "^0.5.33"
   }
 }
