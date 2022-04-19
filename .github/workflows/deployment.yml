@@ -68,7 +68,9 @@ jobs:
             Image=${{ steps.build-image.outputs.image }},
             Role=${{ secrets.AWS_LAMBDA_ROLE }},
             Timeout=15,
-            CronExpression=cron(0 13 ? * 2 *)
+            CronExpression=cron(0 13 ? * 2 *),
+            LambdaSecurityGroup=${{ secrets.AWS_SG }},
+            LambdaSubnet=${{ secrets.AWS_SUBNET }}
 
       - name: Deployment Failed Discord Webhook
         uses: Poss111/discord-hook-action@v1.6.8

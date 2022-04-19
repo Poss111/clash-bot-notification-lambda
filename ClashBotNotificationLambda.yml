@@ -8,6 +8,14 @@ Parameters:
     Description: The aws role to execute the lambda run with.
     Type: String
     Default: N/A
+  LambdaSecurityGroup:
+    Description: The aws security group to run with.
+    Type: String
+    Default: N/A
+  LambdaSubnet:
+    Description: The aws subnet to run with.
+    Type: String
+    Default: N/A
   Timeout:
     Description: The timeout for the Lambda.
     Type: Number
@@ -33,9 +41,9 @@ Resources:
         Mode: Active
       VpcConfig:
         SecurityGroupIds:
-          - sg-0e576172e56e3db0a
+          - !Ref LambdaSecurityGroup
         SubnetIds:
-          - subnet-0552db75a8a780974
+          - !Ref LambdaSubnet
 
   ClashBotNotificationLambdaTriggerEventRule:
     Type: 'AWS::Events::Rule'
