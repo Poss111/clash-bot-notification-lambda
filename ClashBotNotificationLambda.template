@@ -363,6 +363,42 @@
         }
       }
     },
+    "ClashBotNotificationLambdaTriggerEventRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Name": "ClashBotNotificationLambdaTrigger",
+        "Description": "Event to trigger Clash Times Lambda Function.",
+        "ScheduleExpression": "cron(0 13 ? * 2 *)",
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "ClashBotNotificationLambda",
+                "Arn"
+              ]
+            },
+            "Id": "TargetFunctionV1"
+          }
+        ]
+      }
+    },
+    "PermissionForEventsToInvokeLambda": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "ClashBotNotificationLambda"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "ClashBotNotificationLambdaTriggerEventRule",
+            "Arn"
+          ]
+        }
+      }
+    },
     "ClashBotNotificationLambdaTopic": {
       "Type": "AWS::SNS::Topic",
       "Properties": {
