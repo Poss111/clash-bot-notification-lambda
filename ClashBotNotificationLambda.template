@@ -334,7 +334,9 @@
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "FunctionName": "ClashBotNotificationLambda",
-        "Role": "arn:aws:iam::816923827429:role/service-role/dynamoLambdaWriteRole",
+        "Role": {
+          "Ref": "Role"
+        },
         "PackageType": "Image",
         "Code": {
           "ImageUri": {
@@ -348,7 +350,9 @@
             }
           }
         },
-        "Timeout": 15,
+        "Timeout": {
+          "Ref": "Timeout"
+        },
         "TracingConfig": {
           "Mode": "Active"
         },
@@ -368,7 +372,9 @@
       "Properties": {
         "Name": "ClashBotNotificationLambdaTrigger",
         "Description": "Event to trigger Clash Times Lambda Function.",
-        "ScheduleExpression": "cron(0 13 ? * 2 *)",
+        "ScheduleExpression": {
+          "Ref": "CronExpression"
+        },
         "State": "ENABLED",
         "Targets": [
           {
@@ -411,6 +417,21 @@
       "Description": "Image",
       "Type": "String",
       "Default": "N/A"
+    },
+    "Role": {
+      "Description": "The aws role to execute the lambda run with.",
+      "Type": "String",
+      "Default": "N/A"
+    },
+    "Timeout": {
+      "Description": "The timeout for the Lambda.",
+      "Type": "Number",
+      "Default": 15
+    },
+    "CronExpression": {
+      "Description": "The cron expression to run the lambda on.",
+      "Type": "String",
+      "Default": "cron(0 13 ? * 2 *)"
     }
   },
   "Outputs": {
