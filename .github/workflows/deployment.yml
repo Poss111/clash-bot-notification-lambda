@@ -60,7 +60,7 @@ jobs:
           message-color: '16750902'
 
       - name: Deploy to AWS CloudFormation
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        uses: aws-actions/aws-cloudformation-github-deploy@v1.0.3
         with:
           name: ClashBotNotificationLambdaStack
           template: ClashBotNotificationLambda.yml
