@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Image:
+    Description: Image
+    Type: String
+    Default: N/A
+  Role:
+    Description: The aws role to execute the lambda run with.
+    Type: String
+    Default: N/A
+  Timeout:
+    Description: The timeout for the Lambda.
+    Type: Number
+    Default: "15"
+  CronExpression:
+    Description: The cron expression to run the lambda on.
+    Type: String
+    Default: cron(0 13 ? * 2 *)
+Resources:
+  ClashBotNotificationLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: ClashBotNotificationLambda
+      Role: !Ref Role
+      PackageType: Image
+      Code:
+        ImageUri: !Ref Image
+      Environment:
+        Variables:
+          snsTopicArn: !Ref ClashBotNotificationLambdaTopic
+      Timeout: !Ref Timeout
+      TracingConfig:
+        Mode: Active
+      VpcConfig:
+        SecurityGroupIds:
+          - sg-0e576172e56e3db0a
+        SubnetIds:
+          - subnet-0552db75a8a780974
+
+  ClashBotNotificationLambdaTriggerEventRule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Name: ClashBotNotificationLambdaTrigger
+      Description: Event to trigger Clash Times Lambda Function.
+      ScheduleExpression: !Ref CronExpression
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt
+          - ClashBotNotificationLambda
+          - Arn
+          Id: TargetFunctionV1
+
+  PermissionForEventsToInvokeLambda:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref ClashBotNotificationLambda
+      Action: 'lambda:InvokeFunction'
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt
+        - ClashBotNotificationLambdaTriggerEventRule
+        - Arn
+
+  ClashBotNotificationLambdaTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      TopicName: ClashBotNotificationLambdaTopic
+Outputs:
+  LambdaARN:
+    Value: !GetAtt
+      - ClashBotNotificationLambda
+      - Arn
+    Description: The ARN for the Lambda created.
+  TopicARN:
+    Value: !Ref ClashBotNotificationLambdaTopic
+    Description: The ARN for the Topic
