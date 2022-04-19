@@ -65,9 +65,9 @@ jobs:
           name: ClashBotNotificationLambdaStack
           template: ClashBotNotificationLambda.yml
           parameter-overrides: >- 
-            Image=${{ steps.build-image.outputs.image }}
-            Role=${{ secrets.AWS_LAMBDA_ROLE }}
-            Timeout=15
+            Image=${{ steps.build-image.outputs.image }},
+            Role=${{ secrets.AWS_LAMBDA_ROLE }},
+            Timeout=15,
             CronExpression=cron(0 13 ? * 2 *)
 
       - name: Deployment Failed Discord Webhook
