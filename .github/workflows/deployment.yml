@@ -64,7 +64,7 @@ jobs:
         with:
           name: ClashBotNotificationLambdaStack
           template: ClashBotNotificationLambda.template
-          parameter-overrides: "Image=${{ steps.build-image.outputs.image }}"
+          parameter-overrides: "Image=${{ steps.build-image.outputs.image }},Role=${{ secrets.AWS_LAMBDA_ROLE }},Timeout=15,CronExpression='cron(0 13 ? * 2 *)'"
 
       - name: Deployment Failed Discord Webhook
         uses: Poss111/discord-hook-action@v1.6.8

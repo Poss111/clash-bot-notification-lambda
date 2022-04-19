@@ -334,7 +334,9 @@
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "FunctionName": "ClashBotNotificationLambda",
-        "Role": "arn:aws:iam::816923827429:role/service-role/dynamoLambdaWriteRole",
+        "Role": {
+          "Ref": "Role"
+        },
         "PackageType": "Image",
         "Code": {
           "ImageUri": {
@@ -348,7 +350,9 @@
             }
           }
         },
-        "Timeout": 15,
+        "Timeout": {
+          "Ref": "Timeout"
+        },
         "TracingConfig": {
           "Mode": "Active"
         },
@@ -360,6 +364,44 @@
       "Metadata": {
         "AWS::CloudFormation::Designer": {
           "id": "7940b2fa-6b2f-4933-86a8-a00bf572b83d"
+        }
+      }
+    },
+    "ClashBotNotificationLambdaTriggerEventRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "Name": "ClashBotNotificationLambdaTrigger",
+        "Description": "Event to trigger Clash Times Lambda Function.",
+        "ScheduleExpression": {
+          "Ref": "CronExpression"
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "ClashBotNotificationLambda",
+                "Arn"
+              ]
+            },
+            "Id": "TargetFunctionV1"
+          }
+        ]
+      }
+    },
+    "PermissionForEventsToInvokeLambda": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "ClashBotNotificationLambda"
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "ClashBotNotificationLambdaTriggerEventRule",
+            "Arn"
+          ]
         }
       }
     },
@@ -375,6 +417,21 @@
       "Description": "Image",
       "Type": "String",
       "Default": "N/A"
+    },
+    "Role": {
+      "Description": "The aws role to execute the lambda run with.",
+      "Type": "String",
+      "Default": "N/A"
+    },
+    "Timeout": {
+      "Description": "The timeout for the Lambda.",
+      "Type": "Number",
+      "Default": 15
+    },
+    "CronExpression": {
+      "Description": "The cron expression to run the lambda on.",
+      "Type": "String",
+      "Default": "cron(0 13 ? * 2 *)"
     }
   },
   "Outputs": {
