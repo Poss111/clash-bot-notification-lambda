@@ -67,7 +67,7 @@ jobs:
           parameter-overrides: >- 
             Image=${{ steps.build-image.outputs.image }},
             Role=${{ secrets.AWS_LAMBDA_ROLE }},
-            Timeout=15,
+            Timeout=30,
             CronExpression=cron(0 13 ? * 2 *),
             LambdaSecurityGroup=${{ secrets.AWS_SG }},
             LambdaSubnet=${{ secrets.AWS_SUBNET }}
