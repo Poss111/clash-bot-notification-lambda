@@ -16,5 +16,8 @@
   "devDependencies": {
     "jest": "^27.4.7",
     "moment-timezone": "^0.5.33"
+  },
+  "engines": {
+    "node": ">=14 <15"
   }
 }

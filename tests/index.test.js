@@ -176,7 +176,7 @@ describe('Clash Bot Notification Lambda', () => {
             const results = await index.handler();
             expect(mockDiscordOn).toBeCalledTimes(1);
             expect(actualEvents.size).toEqual(1);
-            expect(mockSendMethod.send).toBeCalledTimes(1);
+            expect(mockSendMethod.send).toBeCalledTimes(3);
             expect(results.sentMessages).toHaveLength(1);
             expect(results.sentMessages[0].userId).toEqual(expectedMockUserId);
             expect(results.sentMessages[0].status).toEqual('SUCCESSFUL');
