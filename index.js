@@ -112,10 +112,16 @@ async function sendUserMessage(user, tournaments, teams) {
                     try {
                         user.createDM()
                             .then((channel) => {
-                                channel.send(embeddedMessage)
-                                .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'}))
-                                    .catch((err) => reject({userId: user.key, status: 'FAILED', reason: err}))
-                        }).catch((err) => reject({userId: user.key, status: 'FAILED', reason: err}));
+                                channel.send({content: embeddedMessage.content, embed: embeddedMessage.embeds[0]})
+                                    .then(() => channel.send({
+                                        embed: embeddedMessage.embeds[1]
+                                    }))
+                                    .then(() => channel.send({
+                                        embed: embeddedMessage.embeds[2]
+                                    }))
+                                    .then(() => resolve({userId: user.id, status: 'SUCCESSFUL'}))
+                                    .catch((err) => reject({userId: user.key, status: 'FAILED', reason: err}));
+                            }).catch((err) => reject({userId: user.key, status: 'FAILED', reason: err}));
                     } catch (err) {
                         reject({userId: user.key, status: 'FAILED', reason: err})
                     }
@@ -138,9 +144,9 @@ async function sendMessages(users, tournaments, teams) {
         bot.login(TOKEN)
             .then(() => console.log('Successfully logged into bot.'))
             .catch(err => {
-            console.error(`Failed to send to Users because of => ${err}`);
-            reject(err);
-        });
+                console.error(`Failed to send to Users because of => ${err}`);
+                reject(err);
+            });
     });
 }
 
